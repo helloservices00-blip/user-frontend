@@ -1,105 +1,128 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getProducts } from "../api/api.js";
+import axios from "axios";
 
 export default function Home() {
   const [products, setProducts] = useState([]);
   const [filtered, setFiltered] = useState([]);
-  const [activeCat, setActiveCat] = useState("All");
+  const [activeModule, setActiveModule] = useState(null);
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [activeSubcategory, setActiveSubcategory] = useState(null);
 
-  // -------- CATEGORY & SUBCATEGORY MODULES --------
-  const categories = [
-    {
-      name: "Restaurants",
-      image: "https://via.placeholder.com/100?text=Food",
-      sub: ["Biryani", "Snacks", "Cold Drinks"],
-    },
-    {
-      name: "Grocery",
-      image: "https://via.placeholder.com/100?text=Grocery",
-      sub: ["Vegetables", "Fruits", "Dairy"],
-    },
-    {
-      name: "Fashion",
-      image: "https://via.placeholder.com/100?text=Fashion",
-      sub: ["Men", "Women", "Kids"],
-    },
-  ];
+  const [modules, setModules] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [subcategories, setSubcategories] = useState([]);
 
-  // -------------- FETCH PRODUCTS FROM BACKEND --------------
+  // ---------- FETCH DATA ----------
   useEffect(() => {
-    getProducts()
-      .then((res) => {
-        const data = res.data || [];
-        setProducts(data);
-        setFiltered(data);
-      })
-      .catch(() => {});
+    const fetchData = async () => {
+      try {
+        const prodRes = await axios.get("https://fivestar-backend.onrender.com/api/products");
+        const modRes = await axios.get("https://fivestar-backend.onrender.com/api/modules");
+        const catRes = await axios.get("https://fivestar-backend.onrender.com/api/categories");
+        const subRes = await axios.get("https://fivestar-backend.onrender.com/api/subcategories");
+
+        setProducts(prodRes.data);
+        setFiltered(prodRes.data);
+        setModules(modRes.data);
+        setCategories(catRes.data);
+        setSubcategories(subRes.data);
+      } catch (err) {
+        console.error("Error fetching backend data:", err);
+      }
+    };
+    fetchData();
   }, []);
 
-  // -------------- FILTER LOGIC --------------
-  const filterNow = (cat, sub = null) => {
-    setActiveCat(sub || cat);
-
+  // ---------- FILTER FUNCTION ----------
+  useEffect(() => {
     let list = products;
 
-    if (sub) {
-      list = list.filter((p) => p.subcategory === sub);
-    } else if (cat !== "All") {
-      list = list.filter((p) => p.category === cat);
+    if (activeModule) {
+      list = list.filter((p) => p.module?._id === activeModule);
+    }
+
+    if (activeCategory) {
+      list = list.filter((p) => p.category?._id === activeCategory);
+    }
+
+    if (activeSubcategory) {
+      list = list.filter((p) => p.subcategory?._id === activeSubcategory);
     }
 
     setFiltered(list);
-  };
+  }, [activeModule, activeCategory, activeSubcategory, products]);
 
   return (
     <div className="max-w-7xl mx-auto p-4">
-
-      {/* ---------------- CATEGORY CARDS ---------------- */}
-      <h2 className="text-xl font-bold mb-3">Shop by Category</h2>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        {categories.map((cat) => (
-          <div
-            key={cat.name}
-            className="border p-4 rounded-xl shadow-sm hover:shadow-lg transition"
+      {/* ---------- MODULE FILTERS ---------- */}
+      <h2 className="text-xl font-bold mb-2">Filter by Module</h2>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <button
+          onClick={() => { setActiveModule(null); setActiveCategory(null); setActiveSubcategory(null); }}
+          className="px-3 py-1 bg-blue-500 text-white rounded"
+        >
+          All
+        </button>
+        {modules.map((m) => (
+          <button
+            key={m._id}
+            onClick={() => { setActiveModule(m._id); setActiveCategory(null); setActiveSubcategory(null); }}
+            className={`px-3 py-1 rounded ${activeModule === m._id ? 'bg-blue-400 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
           >
-            <div className="flex flex-col items-center">
-              <img
-                src={cat.image}
-                className="w-20 h-20 object-cover rounded-full"
-                alt={cat.name}
-              />
-
-              <h3 className="text-lg font-bold mt-2">{cat.name}</h3>
-
-              <button
-                onClick={() => filterNow(cat.name)}
-                className="mt-2 px-3 py-1 bg-blue-500 text-white rounded-full text-sm"
-              >
-                View All
-              </button>
-            </div>
-
-            {/* SUBCATEGORIES */}
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
-              {cat.sub.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => filterNow(cat.name, s)}
-                  className="px-3 py-1 rounded-full bg-gray-200 hover:bg-gray-300 text-xs"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+            {m.name}
+          </button>
         ))}
       </div>
 
-      {/* ---------------- PRODUCT GRID ---------------- */}
+      {/* ---------- CATEGORY FILTERS ---------- */}
+      {activeModule && (
+        <>
+          <h2 className="text-xl font-bold mb-2">Filter by Category</h2>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button onClick={() => setActiveCategory(null)} className="px-3 py-1 bg-blue-500 text-white rounded">All</button>
+            {categories
+              .filter((c) => products.some(p => p.module?._id === activeModule && p.category?._id === c._id))
+              .map((c) => (
+                <button
+                  key={c._id}
+                  onClick={() => { setActiveCategory(c._id); setActiveSubcategory(null); }}
+                  className={`px-3 py-1 rounded ${activeCategory === c._id ? 'bg-blue-400 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+                >
+                  {c.name}
+                </button>
+              ))}
+          </div>
+        </>
+      )}
+
+      {/* ---------- SUBCATEGORY FILTERS ---------- */}
+      {activeCategory && (
+        <>
+          <h2 className="text-xl font-bold mb-2">Filter by Subcategory</h2>
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button onClick={() => setActiveSubcategory(null)} className="px-3 py-1 bg-blue-500 text-white rounded">All</button>
+            {subcategories
+              .filter((s) => products.some(p => p.category?._id === activeCategory && p.subcategory?._id === s._id))
+              .map((s) => (
+                <button
+                  key={s._id}
+                  onClick={() => setActiveSubcategory(s._id)}
+                  className={`px-3 py-1 rounded ${activeSubcategory === s._id ? 'bg-blue-400 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+                >
+                  {s.name}
+                </button>
+              ))}
+          </div>
+        </>
+      )}
+
+      {/* ---------- PRODUCT GRID ---------- */}
       <h2 className="text-xl font-bold mb-3">
-        Showing: {activeCat === "All" ? "All Products" : activeCat}
+        Showing: {activeSubcategory ? subcategories.find(s => s._id === activeSubcategory)?.name
+          : activeCategory ? categories.find(c => c._id === activeCategory)?.name
+          : activeModule ? modules.find(m => m._id === activeModule)?.name
+          : "All Products"}
       </h2>
 
       {filtered.length === 0 ? (
@@ -107,10 +130,7 @@ export default function Home() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map((p) => {
-            const img =
-              (p.images && p.images[0]) ||
-              p.image ||
-              "https://via.placeholder.com/300";
+            const img = (p.images && p.images[0]) || p.image || "https://via.placeholder.com/300";
 
             return (
               <Link
@@ -124,6 +144,11 @@ export default function Home() {
                   className="w-full h-40 object-cover rounded"
                 />
                 <h3 className="mt-2 font-semibold truncate">{p.name}</h3>
+                <p className="text-sm text-gray-500">
+                  Module: {p.module?.name} <br />
+                  Category: {p.category?.name} <br />
+                  Subcategory: {p.subcategory?.name}
+                </p>
                 <p className="text-green-600 font-bold">₹{p.price}</p>
               </Link>
             );
