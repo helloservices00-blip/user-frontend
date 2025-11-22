@@ -4,7 +4,7 @@ export const registerUser = async ({ name, email, password }) => {
   try {
     const res = await axios({
       method: "POST",
-      url: "https://backend-1-cqg4.onrender.com/api/auth/register",
+      url: "https://multi-vendor-app-ey66.onrender.com/api/auth/register",
       headers: {
         "Content-Type": "application/json",
       },
